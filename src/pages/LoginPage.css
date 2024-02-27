@@ -1,0 +1,52 @@
+/* LoginPage.css */
+body {
+    background-color: #f0f2f5; /* Light grey background */
+    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  }
+  
+  .main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  
+  .paper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+    background-color: white; /* White background for the paper */
+  }
+  
+  .form {
+    width: '100%'; /* Full width */
+    margin-top: 8px;
+  }
+  
+  .submit {
+    margin: 24px 0px 16px;
+    padding: 10px 0px;
+    border-radius: 20px;
+    font-weight: bold;
+    background-color: #1976d2; /* Blue button */
+    color: white;
+    text-transform: none; /* Avoid uppercase text */
+  }
+  
+  /* Style for the forgot password and sign up links */
+  .link {
+    margin-top: 12px;
+    color: #1976d2; /* Match the button color */
+    cursor: pointer;
+    text-decoration: none; /* No underline */
+  }
+  
+  .link:hover {
+    text-decoration: underline; /* Underline on hover */
+  }
+
+  
+  

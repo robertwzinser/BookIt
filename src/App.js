@@ -4,11 +4,12 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 import Navbar from './components/Navbar';
-import LandingPage from './components/LandingPage';
+import LandingPage from './pages/LandingPage';
 import HairSalonPage from './pages/HairSalonPage';
 import MechanicPage from './pages/MechanicPage';
 import PlumbingPage from './pages/PlumbingPage';
 import AboutPage from './pages/AboutPage';
+import LoginPage from './pages/LoginPage';
 import ServiceTypePage from './pages/ServiceTypePage';
 
 
@@ -24,6 +25,8 @@ function App() {
           <Route path="/mechanic" element={<MechanicPage />} />
           <Route path="/plumbing" element={<PlumbingPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/login" element={<LoginPage />} />
+
           <Route path="/get-started" element={<ServiceTypePage />} />
           {/* Add more routes as needed */}
         </Routes>
