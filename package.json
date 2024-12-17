@@ -1,7 +1,7 @@
 {
   "name": "my-app",
   "version": "0.1.0",
-  "homepage": "https://robertwzinser.github.io/Book-It-Final/",
+  "homepage": "https://robertwzinser.github.io/Book-It/",
   "scripts": {
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
