@@ -1,5 +1,5 @@
 import React from "react";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import theme from "./theme";
@@ -22,7 +22,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <HashRouter>
+      <Router>
         <Navbar />
         <Routes>
           {/* Redirect root path based on login status */}
@@ -43,7 +43,7 @@ function App() {
           />
           <Route path="/create-service" element={<CreateServicePage />} />
         </Routes>
-      </HashRouter>
+      </Router>
     </ThemeProvider>
   );
 }
