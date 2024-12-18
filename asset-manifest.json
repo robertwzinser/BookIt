@@ -1,0 +1,21 @@
+{
+  "files": {
+    "main.css": "/BookIt/static/css/main.68691261.css",
+    "main.js": "/BookIt/static/js/main.d94e4841.js",
+    "static/js/488.78e48f5a.chunk.js": "/BookIt/static/js/488.78e48f5a.chunk.js",
+    "static/media/blank.png": "/BookIt/static/media/blank.095de2657a3c6d22d251.png",
+    "static/media/logo.png": "/BookIt/static/media/logo.36329c35aff278d0eea4.png",
+    "static/media/slick.svg": "/BookIt/static/media/slick.2630a3e3eab21c607e21.svg",
+    "static/media/slick.eot": "/BookIt/static/media/slick.a4e97f5a2a64f0ab1323.eot",
+    "static/media/slick.ttf": "/BookIt/static/media/slick.c94f7671dcc99dce43e2.ttf",
+    "static/media/slick.woff": "/BookIt/static/media/slick.295183786cd8a1389865.woff",
+    "index.html": "/BookIt/index.html",
+    "main.68691261.css.map": "/BookIt/static/css/main.68691261.css.map",
+    "main.d94e4841.js.map": "/BookIt/static/js/main.d94e4841.js.map",
+    "488.78e48f5a.chunk.js.map": "/BookIt/static/js/488.78e48f5a.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.68691261.css",
+    "static/js/main.d94e4841.js"
+  ]
+}
