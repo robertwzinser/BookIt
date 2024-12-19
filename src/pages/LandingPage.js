@@ -4,33 +4,27 @@ import { Link } from "react-router-dom";
 import {
   Box,
   Typography,
-  Button,
-  TextField,
-  MenuItem,
+  Card,
+  CardContent,
+  CardMedia,
+  CardActionArea,
   ThemeProvider,
   createTheme,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
 } from "@mui/material";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
-import CardActionArea from "@mui/material/CardActionArea";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { initializeApp } from "firebase/app";
+import "./LandingPage.css"
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 import { getDatabase, ref, onValue } from "firebase/database";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import logo from "../media/logo.png";
 import Footer from "../components/Footer";
 
-// Custom dark theme for Material UI
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
@@ -48,18 +42,9 @@ const darkTheme = createTheme({
   },
 });
 
-const paperStyle = {
-  padding: "20px",
-  marginTop: "20px",
-  backgroundColor: "#101010",
-};
-
 const LandingPage = () => {
-  const [serviceType, setServiceType] = useState("");
-  const [generalSearch, setGeneralSearch] = useState("");
   const [promotionalOffers, setPromotionalOffers] = useState([]);
   const [faqs, setFaqs] = useState([]);
-  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,28 +52,6 @@ const LandingPage = () => {
     if (!isLoggedIn) {
       navigate("/login");
     }
-
-    const fetchCategories = () => {
-      const categoriesRef = ref(getDatabase(), "categories");
-      onValue(
-        categoriesRef,
-        (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const categoryList = Object.keys(data).map((key) => ({
-              value: key,
-              label: data[key]?.name || "Unnamed Category",
-            }));
-            setCategories(categoryList);
-          } else {
-            setCategories([]); // Set an empty array if no data
-          }
-        },
-        {
-          onlyOnce: true,
-        }
-      );
-    };
 
     const fetchServices = () => {
       const servicesRef = ref(getDatabase(), "services");
@@ -103,7 +66,7 @@ const LandingPage = () => {
             }));
             setPromotionalOffers(servicesList);
           } else {
-            setPromotionalOffers([]); // Handle no data case
+            setPromotionalOffers([]);
           }
         },
         { onlyOnce: true }
@@ -123,48 +86,23 @@ const LandingPage = () => {
             }));
             setFaqs(faqsList);
           } else {
-            setFaqs([]); // Handle no data case
+            setFaqs([]);
           }
         },
         { onlyOnce: true }
       );
     };
 
-    fetchCategories();
     fetchServices();
     fetchFAQs();
   }, [navigate]);
 
-  const handleGetStarted = () => {
-    navigate("/search", { state: "{ serviceType }" });
+  const getDuplicatedOffers = (offers) => {
+    // Duplicate the single offer if there's only one
+    return offers.length === 1 ? [...offers, ...offers, ...offers] : offers;
   };
 
-  const handleGeneralSearchSubmit = (event) => {
-    event.preventDefault();
-    navigate("/search", { state: { searchQuery: generalSearch } });
-  };
-
-  const handleServiceTypeChange = (event) => {
-    const selectedCategory = event.target.value;
-    const categoryLabel =
-      categories.find((category) => category.value === selectedCategory)
-        ?.label || "";
-    // Navigate to the search page with the selected category as the search query
-    navigate("/search", { state: { serviceType: categoryLabel } });
-  };
-
-  const handleGeneralSearchChange = (event) => {
-    setGeneralSearch(event.target.value);
-    setServiceType(""); // Reset serviceType when generalSearch changes
-  };
-
-  const settings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-  };
+  const displayedOffers = getDuplicatedOffers(promotionalOffers);
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -190,131 +128,58 @@ const LandingPage = () => {
         >
           Looking for your next adventure?
         </Typography>
-        <Box sx={{ my: 4, display: "flex", justifyContent: "center" }}>
-          <FormControl
-            variant="outlined"
-            sx={{ minWidth: 240, mr: 2, maxWidth: "50%" }}
-            disabled={generalSearch !== ""}
-          >
-            <InputLabel>I'm looking for</InputLabel>
-            <Select
-              label="I'm looking for"
-              value={serviceType}
-              onChange={handleServiceTypeChange}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 300,
-                  },
-                },
-              }}
-            >
-              <MenuItem value="">Clear selection</MenuItem>{" "}
-              {/* Option to clear selection */}
-              {categories.length > 0 ? (
-                categories.map((category) => (
-                  <MenuItem key={category.value} value={category.value}>
-                    {category.label}
-                  </MenuItem>
-                ))
-              ) : (
-                <MenuItem value="">No categories available</MenuItem>
-              )}
-            </Select>
-          </FormControl>
-          <Typography variant="body1" color="text.primary" sx={{ my: 2 }}>
-            OR
-          </Typography>
-          <form
-            onSubmit={handleGeneralSearchSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "row", // Change flex direction to row
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <TextField
-              label="Search anything..."
-              value={generalSearch}
-              onChange={handleGeneralSearchChange}
-              variant="outlined"
-              sx={{ width: 260, mr: 1, ml: 2 }} // Add margin to the right of TextField
-              disabled={serviceType !== ""}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ ml: 1 }}
-            >
-              Search
-            </Button>
-          </form>
-        </Box>
+
         <Typography variant="h5" gutterBottom color="text.primary">
           Special Offers
         </Typography>
-        <Slider {...settings}>
-          {promotionalOffers.length > 0 ? (
-            promotionalOffers.map((offer, index) => (
-              <Box key={index} sx={{ px: 2, width: "300px" }}>
-                {" "}
-                {/* Set a fixed width for each tile */}
-                <Card sx={paperStyle}>
-                  <CardActionArea component={Link} to={`/service/${offer.id}`}>
-                    <div style={{ paddingTop: "52.25%", position: "relative" }}>
-                      {" "}
-                      {/* Set a 16:9 aspect ratio (9/16 = 0.5625) */}
-                      <CardMedia
-                        component="img"
-                        height="100%" // Make the CardMedia fill its container
-                        image={offer.imageUrl}
-                        alt={offer.title}
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                        }} // Position the image to fill the container
-                      />
-                    </div>
-                    <CardContent>
-                      <Typography
-                        gutterBottom
-                        variant="h6"
-                        component="div"
-                        color="text.primary"
-                        sx={{
-                          overflow: "hidden", // Hide any overflowing text
-                          whiteSpace: "nowrap", // Prevent text wrapping
-                          textOverflow: "ellipsis", // Render a (...) when text overflows
-                        }}
-                      >
-                        {offer.title}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          overflow: "hidden", // Hide any overflowing text
-                          whiteSpace: "nowrap", // Prevent text wrapping
-                          textOverflow: "ellipsis", // Render a (...) when text overflows
-                        }}
-                      >
-                        {offer.description}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Box>
-            ))
-          ) : (
-            <Typography variant="h6" color="text.secondary" textAlign="center">
-              No promotional offers available at the moment.
+        <Box sx={{ width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
+        <Swiper
+  modules={[Navigation, Pagination, Autoplay]}
+  spaceBetween={30}
+  slidesPerView={3}
+  navigation={true} // Enable navigation arrows
+  pagination={{ clickable: true }} // Enable pagination dots
+  loop={true} // Infinite scrolling
+  autoplay={{ delay: 300 }} // Autoplay with manual scrolling
+  breakpoints={{
+    640: { slidesPerView: 1 },
+    768: { slidesPerView: 2 },
+    1024: { slidesPerView: 3 },
+  }}
+>
+  {displayedOffers.map((offer, index) => (
+    <SwiperSlide key={index}>
+      <Card sx={{ padding: "20px", backgroundColor: "#101010" }}>
+        <CardActionArea component={Link} to={`/service/${offer.id}`}>
+          <CardMedia
+            component="img"
+            image={offer.imageUrl}
+            alt={offer.title}
+            style={{
+              height: 200,
+              objectFit: "cover",
+            }}
+          />
+          <CardContent>
+            <Typography
+              gutterBottom
+              variant="h6"
+              component="div"
+              color="text.primary"
+            >
+              {offer.title}
             </Typography>
-          )}
-        </Slider>
+            <Typography variant="body2" color="text.secondary">
+              {offer.description}
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+      </Card>
+    </SwiperSlide>
+  ))}
+</Swiper>
+
+        </Box>
 
         <Box mt={4}>
           <Typography

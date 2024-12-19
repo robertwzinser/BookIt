@@ -6,7 +6,6 @@ import {
   push,
   get,
   set,
-  child,
   update,
 } from "firebase/database";
 import { Box, TextField, Button, Typography } from "@mui/material";
@@ -20,13 +19,9 @@ const BookAppointmentPage = () => {
   const [time, setTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleDateChange = (event) => {
-    setDate(event.target.value);
-  };
+  const handleDateChange = (event) => setDate(event.target.value);
 
-  const handleTimeChange = (event) => {
-    setTime(event.target.value);
-  };
+  const handleTimeChange = (event) => setTime(event.target.value);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -34,6 +29,7 @@ const BookAppointmentPage = () => {
 
     const auth = getAuth();
     const user = auth.currentUser;
+
     if (!user) {
       alert("You must be logged in to book an appointment");
       setIsSubmitting(false);
@@ -44,50 +40,53 @@ const BookAppointmentPage = () => {
       date,
       time,
       userId: user.uid,
-      serviceId: serviceId,
+      serviceId,
     };
 
     try {
-      // Push the new appointment to the database
+      // Create a new appointment
       const newAppointmentRef = push(ref(database, "appointments"));
       await set(newAppointmentRef, appointmentData);
 
-      // Update the appointments array under the user
+      // Add appointment reference to the user's profile
       const userRef = ref(database, `users/${user.uid}/appointments`);
-      const userSnapshot = await get(userRef);
-      if (userSnapshot.exists()) {
-        const appointmentsArray = userSnapshot.val();
-        appointmentsArray.push(newAppointmentRef.key);
-        await set(userRef, appointmentsArray);
-      } else {
-        await set(userRef, [newAppointmentRef.key]);
-      }
+      const userAppointments = (await get(userRef)).val() || [];
+      await set(userRef, [...userAppointments, newAppointmentRef.key]);
 
-      // Add the booking details to the chosen service's bookings array
+      // Add booking details to the service's bookings
       const serviceRef = ref(database, `services/${serviceId}`);
-      const serviceSnapshot = await get(serviceRef);
-      if (serviceSnapshot.exists()) {
-        const serviceData = serviceSnapshot.val();
-        const bookings = serviceData.bookings || [];
-        bookings.push({
-          userId: user.uid,
-          date,
-          time,
-        });
-        await update(serviceRef, { bookings });
-      }
+      const serviceData = (await get(serviceRef)).val() || {};
+      const serviceBookings = serviceData.bookings || [];
+      await update(serviceRef, {
+        bookings: [...serviceBookings, { userId: user.uid, date, time }],
+      });
 
-      setIsSubmitting(false);
-      navigate("/home"); // Navigate to the homepage or confirmation page after booking
+      alert("Appointment booked successfully!");
+      navigate("/home");
     } catch (error) {
       console.error("Error booking appointment:", error);
+      alert("An error occurred while booking the appointment. Please try again.");
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-      <Typography variant="h4" gutterBottom>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        mt: 2,
+        maxWidth: 500,
+        mx: "auto",
+        px: 3,
+        py: 4,
+        boxShadow: 3,
+        borderRadius: 2,
+        bgcolor: "background.paper",
+      }}
+    >
+      <Typography variant="h4" gutterBottom textAlign="center">
         Book Your Appointment
       </Typography>
       <TextField
@@ -99,6 +98,7 @@ const BookAppointmentPage = () => {
         onChange={handleDateChange}
         sx={{ mb: 2 }}
         InputLabelProps={{ shrink: true }}
+        inputProps={{ "aria-label": "Select appointment date" }}
       />
       <TextField
         label="Time"
@@ -109,6 +109,7 @@ const BookAppointmentPage = () => {
         onChange={handleTimeChange}
         sx={{ mb: 2 }}
         InputLabelProps={{ shrink: true }}
+        inputProps={{ "aria-label": "Select appointment time" }}
       />
       <Button
         type="submit"
@@ -116,8 +117,9 @@ const BookAppointmentPage = () => {
         color="primary"
         disabled={isSubmitting}
         fullWidth
+        sx={{ py: 1.5 }}
       >
-        Book Appointment
+        {isSubmitting ? "Booking..." : "Book Appointment"}
       </Button>
     </Box>
   );

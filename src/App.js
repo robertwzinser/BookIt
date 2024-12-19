@@ -1,5 +1,5 @@
 import React from "react";
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import theme from "./theme";
@@ -16,7 +16,6 @@ import UserProfilePage from "./pages/UserProfile";
 import "./App.css"; // Import the CSS file
 
 function App() {
-  // Check if the user is logged in based on localStorage (or another authentication state)
   const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
   return (
@@ -25,10 +24,9 @@ function App() {
       <Router>
         <Navbar />
         <Routes>
-          {/* Redirect root path based on login status */}
           <Route
             path="/"
-            element={isLoggedIn ? <Navigate to="/home" /> : <Navigate to="/sign-up" />}
+            element={isLoggedIn ? <LandingPage /> : <SignUpPage />}
           />
           <Route path="/home" element={<LandingPage />} />
           <Route path="/about" element={<AboutPage />} />

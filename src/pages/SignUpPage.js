@@ -9,6 +9,7 @@ import {
   Button,
   Box,
 } from "@mui/material";
+import blankUser from "../media/blank.png";
 import { useNavigate } from "react-router-dom";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
@@ -19,37 +20,66 @@ import {
   uploadBytes,
   getDownloadURL,
 } from "firebase/storage";
-import blankUser from "../media/blank.png";
 
-// Initialize Firebase only once
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "your-api-key",
+  authDomain: "your-auth-domain",
+  projectId: "your-project-id",
+  storageBucket: "your-storage-bucket",
+  messagingSenderId: "your-messaging-sender-id",
+  appId: "your-app-id",
+};
+
+// Initialize Firebase app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getDatabase(app);
 const storage = getStorage(app);
 
 const SignUpPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [isBusinessOwner, setIsBusinessOwner] = useState(false);
-  const [businessName, setBusinessName] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    name: "",
+    phone: "",
+    businessName: "",
+    isBusinessOwner: false,
+    imageFile: null,
+  });
   const [error, setError] = useState("");
-  const [imageFile, setImageFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleCheckboxChange = (event) => {
-    setIsBusinessOwner(event.target.checked);
+  // Handle form field changes
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    setImageFile(file);
-    // Set the imageUrl state to the file itself
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    setFormData((prev) => ({ ...prev, imageFile: file }));
   };
 
-  const handleSignUp = async (event) => {
-    event.preventDefault();
+  // Submit form
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    const {
+      email,
+      password,
+      name,
+      phone,
+      isBusinessOwner,
+      businessName,
+      imageFile,
+    } = formData;
 
     if (
       !email ||
@@ -62,8 +92,10 @@ const SignUpPage = () => {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      // Create user in Firebase Authentication
+      // Create user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -71,26 +103,26 @@ const SignUpPage = () => {
       );
       const user = userCredential.user;
 
-      // Upload profile picture to Firebase Storage
-      let imageRef = null;
+      // Upload profile image
+      let profileImageUrl = null;
       if (imageFile) {
-        imageRef = storageRef(storage, `profileImages/${user.uid}`);
+        const imageRef = storageRef(storage, `profileImages/${user.uid}`);
         await uploadBytes(imageRef, imageFile);
+        profileImageUrl = await getDownloadURL(imageRef);
       }
 
-      // Create user profile data
+      // Construct user profile
       const userProfile = {
-        email: user.email,
+        email,
         profile: {
-          name: name,
-          phone: phone,
+          name,
+          phone,
           type: isBusinessOwner ? "business_owner" : "customer",
-          imageRef: imageRef ? imageRef.fullPath : null, // Store the storage reference
+          imageUrl: profileImageUrl || null,
         },
         appointments: [],
       };
 
-      // If user is a business owner, add business details
       if (isBusinessOwner) {
         userProfile.businessDetails = {
           businessName,
@@ -98,14 +130,15 @@ const SignUpPage = () => {
         };
       }
 
-      // Write the user profile to Realtime Database under the 'users' node
-      await set(ref(db, "users/" + user.uid), userProfile);
+      // Save user profile to Firebase Database
+      await set(ref(db, `users/${user.uid}`), userProfile);
 
-      console.log("User signed up successfully");
-      navigate("/home"); // Navigate to the dashboard or home page
-    } catch (error) {
-      console.error("Error signing up:", error);
-      setError(error.message);
+      navigate("/home");
+    } catch (err) {
+      console.error("Error signing up:", err);
+      setError("An error occurred during sign up. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,123 +148,112 @@ const SignUpPage = () => {
         elevation={6}
         sx={{
           marginTop: 8,
+          padding: 3,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: 3,
           backgroundColor: "#101010",
         }}
       >
-        <Typography component="h1" variant="h5" marginBottom="10px">
+        <Typography component="h1" variant="h5" mb={2}>
           Sign Up
         </Typography>
-        <Box component="form" onSubmit={handleSignUp} noValidate sx={{ mt: 1 }}>
-          {/* Profile picture upload input field */}
-          <label
-            htmlFor="image-upload"
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}
-          >
-            <input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              style={{ display: "none" }}
-            />
-            <img
-              src={imageFile ? URL.createObjectURL(imageFile) : blankUser}
-              alt="Profile"
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: "50%",
-                objectFit: "cover",
-              }}
-            />
-          </label>
+        <Box component="form" onSubmit={handleSignUp} sx={{ width: "100%" }}>
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+            <label htmlFor="image-upload" style={{ cursor: "pointer" }}>
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: "none" }}
+              />
+              <img
+                src={
+                  formData.imageFile
+                    ? URL.createObjectURL(formData.imageFile)
+                    : blankUser
+                }
+                alt="Profile"
+                style={{
+                  width: 100,
+                  height: 100,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+            </label>
+          </Box>
           <TextField
             variant="outlined"
             margin="normal"
-            required
             fullWidth
+            required
             id="name"
-            label="Full Name"
             name="name"
-            autoComplete="name"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            label="Full Name"
+            value={formData.name}
+            onChange={handleChange}
           />
           <TextField
             variant="outlined"
             margin="normal"
-            required
             fullWidth
+            required
             id="phone"
-            label="Phone Number"
             name="phone"
-            autoComplete="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            label="Phone Number"
+            value={formData.phone}
+            onChange={handleChange}
           />
           <TextField
             variant="outlined"
             margin="normal"
-            required
             fullWidth
+            required
             id="email"
-            label="Email Address"
             name="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            label="Email Address"
+            value={formData.email}
+            onChange={handleChange}
           />
           <TextField
             variant="outlined"
             margin="normal"
-            required
             fullWidth
+            required
+            id="password"
             name="password"
             label="Password"
             type="password"
-            id="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={handleChange}
           />
           <FormControlLabel
             control={
               <Checkbox
-                checked={isBusinessOwner}
-                onChange={handleCheckboxChange}
                 name="isBusinessOwner"
+                checked={formData.isBusinessOwner}
+                onChange={handleChange}
               />
             }
             label="Business Owner?"
-            sx={{ marginTop: "10px" }}
           />
-          {isBusinessOwner && (
+          {formData.isBusinessOwner && (
             <TextField
               variant="outlined"
               margin="normal"
-              required
               fullWidth
+              required
+              id="businessName"
               name="businessName"
               label="Business Name"
-              type="text"
-              id="businessName"
-              autoComplete="business-name"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              value={formData.businessName}
+              onChange={handleChange}
             />
           )}
           {error && (
-            <Typography variant="body2" color="error">
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
               {error}
             </Typography>
           )}
@@ -239,9 +261,11 @@ const SignUpPage = () => {
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            color="primary"
+            sx={{ mt: 3 }}
+            disabled={isSubmitting}
           >
-            Sign Up
+            {isSubmitting ? "Signing Up..." : "Sign Up"}
           </Button>
         </Box>
       </Paper>

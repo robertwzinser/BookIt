@@ -1,20 +1,19 @@
-// useAuth.js
 import { useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const useAuth = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
     if (!isLoggedIn) {
       // User is not logged in, redirect to login page
-      history.push("/login");
+      navigate("/login");
     }
-  }, [history]);
+  }, [navigate]);
 
-  return;
+  return null; // No return value needed for this hook
 };
 
 export default useAuth;

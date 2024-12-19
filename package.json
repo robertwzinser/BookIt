@@ -13,6 +13,31 @@
     "gh-pages": "^6.1.1",
     "react-scripts": "^5.0.1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robertwzinser/BookIt.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/robertwzinser/BookIt/issues"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.2.1",
+    "@mui/material": "^6.2.1",
+    "@mui/styled-engine": "^6.2.1",
+    "firebase": "^11.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.2",
+    "react-scripts": "^5.0.1",
+    "react-slick": "^0.30.3",
+    "slick-carousel": "^1.8.1",
+    "swiper": "^11.1.15",
+    "web-vitals": "^4.2.4"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -24,25 +49,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "dependencies": {
-    "@date-io/date-fns": "^2.17.0",
-    "@emotion/react": "^11.11.4",
-    "@emotion/styled": "^11.11.5",
-    "@mui/icons-material": "^5.15.15",
-    "@mui/lab": "^5.0.0-alpha.170",
-    "@mui/material": "^5.15.15",
-    "@mui/x-date-pickers": "^7.2.0",
-    "codegen": "^0.1.0",
-    "date-fns": "^2.30.0",
-    "firebase": "^10.11.0",
-    "react": "^18.2.0",
-    "react-datepicker": "^6.9.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3",
-    "react-slick": "^0.30.2",
-    "react-time-picker": "^6.6.0",
-    "slick-carousel": "^1.8.1",
-    "web-vitals": "^3.5.2"
   }
 }

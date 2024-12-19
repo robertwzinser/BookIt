@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getDatabase, ref, onValue } from "firebase/database";
+import { getDatabase, ref, get } from "firebase/database";
 import {
   Box,
   Typography,
   Button,
-  Grid,
   Container,
   Card,
   CardContent,
@@ -21,54 +20,50 @@ const ServiceDetailPage = () => {
   const { serviceId } = useParams();
   const [service, setService] = useState(null);
   const [provider, setProvider] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const database = getDatabase();
   const storage = getStorage();
 
   useEffect(() => {
-    const fetchServiceDetails = async () => {
-      const serviceRef = ref(database, `services/${serviceId}`);
-      onValue(
-        serviceRef,
-        (snapshot) => {
-          setService(snapshot.val());
-          const ownerId = snapshot.val()?.ownerId;
-          if (ownerId) {
-            const providerRef = ref(database, `users/${ownerId}`);
-            onValue(
-              providerRef,
-              async (snapshot) => {
-                setProvider(snapshot.val());
-                const profileImageRef = snapshot.val()?.profile?.imageRef;
-                if (profileImageRef) {
-                  const url = await getDownloadURL(
-                    storageRef(storage, profileImageRef)
-                  );
-                  setProvider((prevState) => ({
-                    ...prevState,
-                    profile: {
-                      ...prevState.profile,
-                      imageUrl: url,
-                    },
-                  }));
-                }
-              },
-              { onlyOnce: true }
+    const fetchDetails = async () => {
+      try {
+        // Fetch service details
+        const serviceRef = ref(database, `services/${serviceId}`);
+        const serviceSnapshot = await get(serviceRef);
+        const serviceData = serviceSnapshot.val();
+        setService(serviceData);
+
+        if (serviceData?.ownerId) {
+          // Fetch provider details
+          const providerRef = ref(database, `users/${serviceData.ownerId}`);
+          const providerSnapshot = await get(providerRef);
+          const providerData = providerSnapshot.val();
+
+          if (providerData?.profile?.imageRef) {
+            const imageUrl = await getDownloadURL(
+              storageRef(storage, providerData.profile.imageRef)
             );
+            providerData.profile.imageUrl = imageUrl;
           }
-        },
-        { onlyOnce: true }
-      );
+
+          setProvider(providerData);
+        }
+      } catch (error) {
+        console.error("Error fetching service details:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchServiceDetails();
-  }, [database, serviceId, storage]);
+    fetchDetails();
+  }, [serviceId, database, storage]);
 
   const handleBookAppointment = () => {
     navigate(`/book-appointment/${serviceId}`);
   };
 
-  if (!service || !provider) {
+  if (loading) {
     return (
       <Container
         maxWidth="md"
@@ -81,6 +76,24 @@ const ServiceDetailPage = () => {
       >
         <Typography variant="h6" textAlign="center">
           Loading service details...
+        </Typography>
+      </Container>
+    );
+  }
+
+  if (!service) {
+    return (
+      <Container
+        maxWidth="md"
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "70vh",
+        }}
+      >
+        <Typography variant="h6" textAlign="center">
+          Service not found.
         </Typography>
       </Container>
     );
@@ -101,7 +114,9 @@ const ServiceDetailPage = () => {
             left: 0,
             width: "100%",
             height: "100%",
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.4)), url(${service.imageUrl})`,
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url(${
+              service.imageUrl || "https://via.placeholder.com/400"
+            })`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             display: "flex",
@@ -122,7 +137,7 @@ const ServiceDetailPage = () => {
               Provider Details
             </Typography>
             <Avatar
-              src={provider.profile?.imageUrl || ""}
+              src={provider?.profile?.imageUrl || "https://via.placeholder.com/100"}
               alt="Provider Avatar"
               sx={{ width: 100, height: 100, margin: "0 auto" }}
             />
@@ -132,13 +147,12 @@ const ServiceDetailPage = () => {
               textAlign="center"
               marginTop="20px"
             >
-              <strong>Name:</strong> {provider.profile?.name}
+              <strong>Name:</strong> {provider?.profile?.name || "N/A"}
             </Typography>
             <Typography variant="body1" gutterBottom textAlign="center">
-              <strong>Email:</strong> {provider.email}
+              <strong>Email:</strong> {provider?.email || "N/A"}
             </Typography>
           </CardContent>
-          {/* Include other provider details as needed */}
         </Card>
 
         <Box sx={{ mt: 4, textAlign: "center" }}>

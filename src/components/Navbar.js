@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import "./Navbar.css";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { getDatabase, ref, onValue } from "firebase/database";
 import {
   getStorage,
@@ -46,7 +46,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const storage = getStorage();
+const storage = getStorage(app);
 
 const Navbar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -54,14 +54,12 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [userName, setUserName] = useState("");
-  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState(blankUser);
 
-  const auth = getAuth(); // Assumes Firebase auth is initialized elsewhere
   const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
   const toggleDrawer = (open) => (event) => {
     if (
-      event &&
       event.type === "keydown" &&
       (event.key === "Tab" || event.key === "Shift")
     ) {
@@ -71,75 +69,68 @@ const Navbar = () => {
   };
 
   const handleServicesClick = () => {
-    setOpenServices(!openServices);
+    setOpenServices((prev) => !prev);
   };
 
   const handleNavigate = (path, categoryId = null) => {
-    if (categoryId) {
-      navigate(path, { state: { serviceType: categoryId } });
-    } else {
-      navigate(path);
-    }
+    navigate(path, categoryId ? { state: { serviceType: categoryId } } : {});
     setDrawerOpen(false);
   };
 
-  const handleSignOut = () => {
-    auth
-      .signOut()
-      .then(() => {
-        localStorage.removeItem("isLoggedIn");
-        localStorage.removeItem("userEmail");
-        navigate("/login");
-      })
-      .catch((error) => {
-        console.error("Sign out Error:", error);
-      });
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("userEmail");
+      navigate("/login");
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
   useEffect(() => {
     const fetchUserProfile = () => {
-      if (auth.currentUser) {
-        const db = getDatabase();
-        const userProfileRef = ref(db, `users/${auth.currentUser.uid}/profile`);
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const db = getDatabase(app);
+        const userProfileRef = ref(db, `users/${currentUser.uid}/profile`);
         onValue(userProfileRef, async (snapshot) => {
           const userProfile = snapshot.val();
           if (userProfile) {
-            setUserName(userProfile.name); // Set user name from profile data
+            setUserName(userProfile.name);
             if (userProfile.imageRef) {
-              // If there's an image reference, fetch the URL
-              const imageRef = storageRef(getStorage(), userProfile.imageRef);
-              const url = await getDownloadURL(imageRef);
-              setProfileImageUrl(url);
+              try {
+                const imageUrl = await getDownloadURL(
+                  storageRef(storage, userProfile.imageRef)
+                );
+                setProfileImageUrl(imageUrl);
+              } catch {
+                setProfileImageUrl(blankUser);
+              }
             } else {
               setProfileImageUrl(blankUser);
             }
-          } else {
-            console.log("No user profile data available");
           }
         });
       }
     };
 
     const fetchCategories = () => {
-      const db = getDatabase();
+      const db = getDatabase(app);
       const categoriesRef = ref(db, "categories");
       onValue(categoriesRef, (snapshot) => {
-        const data = snapshot.val();
-        const fetchedCategories = [];
-        for (let key in data) {
-          fetchedCategories.push({
-            id: key,
-            name: data[key].name,
-          });
-        }
+        const data = snapshot.val() || {};
+        const fetchedCategories = Object.entries(data).map(([key, value]) => ({
+          id: key,
+          name: value.name,
+        }));
         setCategories(fetchedCategories);
       });
     };
 
-    // Call both fetch functions
     fetchUserProfile();
     fetchCategories();
-  }, [auth.currentUser]);
+  }, []);
 
   return (
     <>
@@ -150,7 +141,7 @@ const Navbar = () => {
             color="inherit"
             aria-label="menu"
             onClick={toggleDrawer(true)}
-            sx={{ mr: 1, ml: 0 }}
+            sx={{ mr: 1 }}
           >
             <MenuIcon />
           </IconButton>
@@ -171,12 +162,9 @@ const Navbar = () => {
             </Link>
           </Typography>
 
-          {isLoggedIn && userName && (
+          {isLoggedIn && (
             <div style={{ display: "flex", alignItems: "center" }}>
-              <Typography
-                variant="body2"
-                sx={{ color: "#8BC34A", marginRight: "10px" }}
-              >
+              <Typography variant="body2" sx={{ color: "#8BC34A", mr: 2 }}>
                 Logged in as:{" "}
                 <Link
                   to="/profile"
@@ -190,8 +178,10 @@ const Navbar = () => {
                   {userName}
                 </Link>
               </Typography>
-              {profileImageUrl && (
-                <div
+              <Link to="/profile">
+                <img
+                  src={profileImageUrl}
+                  alt="Profile"
                   style={{
                     width: 40,
                     height: 40,
@@ -199,102 +189,68 @@ const Navbar = () => {
                     overflow: "hidden",
                     border: "2px solid #505050",
                   }}
-                >
-                  <Link to="/profile">
-                    <img
-                      src={profileImageUrl}
-                      alt="Profile"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </Link>
-                </div>
-              )}
+                />
+              </Link>
             </div>
           )}
-          {isLoggedIn ? (
-            <Button color="inherit" onClick={handleSignOut} sx={{ pl: 2 }}>
-              Sign Out
-            </Button>
-          ) : (
-            <Link
-              to="/login"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <Button color="inherit">Login</Button>
-            </Link>
-          )}
+          <Button
+            color="inherit"
+            onClick={isLoggedIn ? handleSignOut : () => navigate("/login")}
+            sx={{ ml: 2 }}
+          >
+            {isLoggedIn ? "Sign Out" : "Login"}
+          </Button>
         </Toolbar>
       </AppBar>
+
       <Drawer
         anchor="left"
         open={drawerOpen}
         onClose={toggleDrawer(false)}
         sx={{
-          width: 250,
           "& .MuiDrawer-paper": {
             width: 250,
             boxSizing: "border-box",
             backdropFilter: "blur(8px)",
-            backgroundColor: "rgba(0, 0, 0, 0.3)",
-            display: "flex",
-            flexDirection: "column",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
           },
         }}
       >
-        <div
-          style={{ display: "flex", flexDirection: "column", height: "100%" }}
-        >
-          <List style={{ flexGrow: 1 }}>
-            <ListItemButton onClick={() => handleNavigate("/home")}>
-              <ListItemIcon>
-                <HomeIcon />
-              </ListItemIcon>
-              <ListItemText primary="Home" />
-            </ListItemButton>
-            <ListItemButton onClick={handleServicesClick}>
-              <ListItemIcon>
-                <FlightIcon />
-              </ListItemIcon>
-              <ListItemText primary="Services" />
-              {openServices ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-            <Collapse in={openServices} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {categories.map((category) => (
-                  <ListItemButton
-                    key={category.id}
-                    sx={{ pl: 11 }}
-                    onClick={() => handleNavigate("/search", category.id)}
-                    className=""
-                  >
-                    <ListItemText
-                      primary={
-                        <Typography sx={{ fontStyle: "italic" }}>
-                          {category.name}
-                        </Typography>
-                      }
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Collapse>
-            <ListItemButton onClick={() => handleNavigate("/about")}>
-              <ListItemIcon>
-                <InfoIcon />
-              </ListItemIcon>
-              <ListItemText primary="About Us" />
-            </ListItemButton>
-          </List>
-          <div className="drawer-footer">
-            <Typography variant="caption" display="block">
-              © 2024 BookIt
-            </Typography>
-          </div>
-        </div>
+        <List>
+          <ListItemButton onClick={() => handleNavigate("/home")}>
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
+            <ListItemText primary="Home" />
+          </ListItemButton>
+          <ListItemButton onClick={handleServicesClick}>
+            <ListItemIcon>
+              <FlightIcon />
+            </ListItemIcon>
+            <ListItemText primary="Services" />
+            {openServices ? <ExpandLess /> : <ExpandMore />}
+          </ListItemButton>
+          <Collapse in={openServices} timeout="auto" unmountOnExit>
+            {categories.map((category) => (
+              <ListItemButton
+                key={category.id}
+                sx={{ pl: 4 }}
+                onClick={() => handleNavigate("/search", category.id)}
+              >
+                <ListItemText primary={category.name} />
+              </ListItemButton>
+            ))}
+          </Collapse>
+          <ListItemButton onClick={() => handleNavigate("/about")}>
+            <ListItemIcon>
+              <InfoIcon />
+            </ListItemIcon>
+            <ListItemText primary="About Us" />
+          </ListItemButton>
+        </List>
+        <Typography variant="caption" sx={{ textAlign: "center", p: 2 }}>
+          © 2024 BookIt
+        </Typography>
       </Drawer>
     </>
   );

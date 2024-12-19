@@ -7,8 +7,7 @@ import {
   CardMedia,
   Typography,
   Grid,
-  Button,
-  CardActionArea,
+  CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { getDatabase, ref, onValue } from "firebase/database";
@@ -19,6 +18,7 @@ const SearchPage = () => {
   const database = getDatabase();
 
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const serviceType = state?.serviceType || "";
   const searchQuery = state?.searchQuery || "";
 
@@ -28,38 +28,39 @@ const SearchPage = () => {
       onValue(
         servicesRef,
         (snapshot) => {
-          const servicesData = snapshot.val();
-          const loadedServices = [];
-          for (const key in servicesData) {
-            const service = servicesData[key];
-            // Check if the service matches the selected service type, search query,
-            // or if any word in the service category matches the search query
-            if (
-              (serviceType && service.category === serviceType) ||
-              (searchQuery &&
-                (service.name
-                  .toLowerCase()
-                  .includes(searchQuery.toLowerCase()) ||
+          const servicesData = snapshot.val() || {};
+          const filteredServices = Object.entries(servicesData)
+            .filter(([_, service]) => {
+              const matchesType = serviceType
+                ? service.category === serviceType
+                : true;
+              const matchesQuery = searchQuery
+                ? service.name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
                   service.description
                     .toLowerCase()
                     .includes(searchQuery.toLowerCase()) ||
                   service.category
                     .toLowerCase()
-                    .includes(searchQuery.toLowerCase())))
-            ) {
-              loadedServices.push({ id: key, ...service });
-            }
-          }
-          setServices(loadedServices);
+                    .includes(searchQuery.toLowerCase())
+                : true;
+              return matchesType && matchesQuery;
+            })
+            .map(([id, service]) => ({ id, ...service }));
+
+          setServices(filteredServices);
+          setLoading(false);
         },
-        {
-          onlyOnce: true,
+        (error) => {
+          console.error("Error fetching services:", error);
+          setLoading(false);
         }
       );
     };
 
     if (!serviceType && !searchQuery) {
-      navigate("/home"); // Redirect to home if no search criteria are provided
+      navigate("/home");
     } else {
       fetchServices();
     }
@@ -69,14 +70,29 @@ const SearchPage = () => {
     transition: "transform 0.15s ease-in-out",
     "&:hover": {
       transform: "scale(1.03)",
-      boxShadow: theme.shadows[20],
+      boxShadow: theme.shadows[4],
     },
   }));
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "80vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Search Results
+        {services.length > 0 ? "Search Results" : "No Services Found"}
       </Typography>
       <Grid container spacing={2}>
         {services.map((service) => (
@@ -89,30 +105,32 @@ const SearchPage = () => {
             key={service.id || service.name}
           >
             <StyledCard>
-              <CardActionArea component={Link} to={`/service/${service.id}`}>
-                <CardMedia
-                  component="img"
-                  sx={{ height: 180 }}
-                  image={service.imageUrl}
-                  alt={service.name}
-                />
-                <CardContent>
-                  <Typography gutterBottom variant="h6" component="div">
-                    {service.name}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      overflow: "hidden", // Hide any overflowing text
-                      whiteSpace: "nowrap", // Prevent text wrapping
-                      textOverflow: "ellipsis", // Render a (...) when text overflows
-                    }}
-                  >
-                    {service.description}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
+              <CardMedia
+                component={Link}
+                to={`/service/${service.id}`}
+                sx={{ height: 180 }}
+                image={service.imageUrl || "https://via.placeholder.com/150"}
+                alt={service.name}
+              />
+              <CardContent>
+                <Typography gutterBottom variant="h6" component="div">
+                  {service.name}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: 2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={service.description}
+                >
+                  {service.description}
+                </Typography>
+              </CardContent>
             </StyledCard>
           </Grid>
         ))}

@@ -7,8 +7,8 @@ import {
   Button,
   Grid,
   Snackbar,
+  Alert,
 } from "@mui/material";
-import MuiAlert from "@mui/material/Alert";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -16,23 +16,27 @@ const Footer = () => {
 
   const handleSignUp = () => {
     console.log("Signing up with email:", email);
-    setEmail("");
-    setOpenSnackbar(true);
+    setEmail(""); // Clear the email field
+    setOpenSnackbar(true); // Show the success message
   };
 
   const handleCloseSnackbar = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
+    if (reason === "clickaway") return;
     setOpenSnackbar(false);
   };
 
   return (
-    <Box sx={{ bgcolor: "background.paper", p: 4, textAlign: "center" }}>
+    <Box
+      sx={{
+        bgcolor: "background.paper",
+        p: 4,
+        textAlign: "center",
+      }}
+    >
       <Typography variant="h6" gutterBottom color="text.primary" mb={2}>
         Stay in the know
       </Typography>
-      <Typography variant="body1" color="text.secondary" gutterBottom mb={4}>
+      <Typography variant="body1" color="text.secondary" mb={4}>
         Sign up to get marketing emails from BookIt, including promotions,
         rewards, travel experiences, and information.
       </Typography>
@@ -43,7 +47,7 @@ const Footer = () => {
         alignItems="center"
         mb={4}
       >
-        <Grid item xs={8} md={6}>
+        <Grid item xs={12} sm={8} md={6}>
           <TextField
             label="Email"
             variant="outlined"
@@ -52,14 +56,16 @@ const Footer = () => {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-label="Email Address"
           />
         </Grid>
-        <Grid item xs={4} md={2}>
+        <Grid item xs={12} sm={4} md={2}>
           <Button
             variant="contained"
             color="primary"
             fullWidth
             onClick={handleSignUp}
+            aria-label="Sign Up Button"
           >
             Sign Up
           </Button>
@@ -69,15 +75,15 @@ const Footer = () => {
         open={openSnackbar}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <MuiAlert
-          elevation={6}
-          variant="filled"
+        <Alert
           onClose={handleCloseSnackbar}
           severity="success"
+          sx={{ width: "100%" }}
         >
           Successfully signed up for emails!
-        </MuiAlert>
+        </Alert>
       </Snackbar>
     </Box>
   );

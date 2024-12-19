@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getDatabase, ref, push, set, onValue } from "firebase/database";
+import { getDatabase, ref, push, set, get } from "firebase/database";
 import {
   TextField,
   Button,
@@ -22,16 +22,27 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 
+// Firebase configuration (replace with your own configuration)
+const firebaseConfig = {
+  apiKey: "AIzaSyA_xxxx",
+  authDomain: "your-app.firebaseapp.com",
+  projectId: "your-app-id",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdefg12345",
+};
+
+// Firebase initialization
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const database = getDatabase(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
 const paperStyle = {
   padding: "20px",
   marginTop: "20px",
   backgroundColor: "#0A0A0A",
 };
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const database = getDatabase(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
 
 const CreateServicePage = () => {
   const [name, setName] = useState("");
@@ -41,76 +52,87 @@ const CreateServicePage = () => {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [categories, setCategories] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const categoriesRef = ref(database, "categories");
-    onValue(categoriesRef, (snapshot) => {
-      const data = snapshot.val();
-      const loadedCategories = Object.keys(data).map((key) => ({
-        id: key,
-        name: data[key].name,
-      }));
-      setCategories(loadedCategories);
-    });
+    const fetchCategories = async () => {
+      try {
+        const categoriesRef = ref(database, "categories");
+        const snapshot = await get(categoriesRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const loadedCategories = Object.keys(data).map((key) => ({
+            id: key,
+            name: data[key].name,
+          }));
+          setCategories(loadedCategories);
+        }
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
-  const handleImageUpload = async (event) => {
+  const handleImageUpload = (event) => {
     const file = event.target.files[0];
     setImageFile(file);
-    const imageUrl = URL.createObjectURL(file);
-    setImageUrl(imageUrl);
+    setImageUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsSubmitting(true);
 
-    let imageUrl = "";
-    if (imageFile) {
-      const imageRef = storageRef(storage, `images/${imageFile.name}`);
-      await uploadBytes(imageRef, imageFile);
-      imageUrl = await getDownloadURL(imageRef);
+    try {
+      let uploadedImageUrl = "";
+      if (imageFile) {
+        const imageRef = storageRef(storage, `images/${imageFile.name}`);
+        await uploadBytes(imageRef, imageFile);
+        uploadedImageUrl = await getDownloadURL(imageRef);
+      }
+
+      const newServiceRef = push(ref(database, "services"));
+      const newServiceData = {
+        name,
+        description,
+        price: Number(price),
+        category,
+        imageUrl: uploadedImageUrl,
+        ownerId: auth.currentUser?.uid,
+      };
+
+      await set(newServiceRef, newServiceData);
+
+      // Update user's business details
+      const userRef = ref(
+        database,
+        `users/${auth.currentUser?.uid}/businessDetails`
+      );
+      const snapshot = await get(userRef);
+      const userDetails = snapshot.val() || {};
+      const servicesOffered = userDetails.servicesOffered || [];
+      if (!servicesOffered.includes(newServiceRef.key)) {
+        servicesOffered.push(newServiceRef.key);
+        await set(
+          ref(database, `users/${auth.currentUser?.uid}/businessDetails`),
+          {
+            ...userDetails,
+            servicesOffered,
+          }
+        );
+      }
+
+      alert("Service created successfully!");
+      navigate("/profile");
+    } catch (error) {
+      console.error("Failed to create service:", error);
+      alert("An error occurred while creating the service. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newServiceRef = ref(database, "services");
-    const newService = push(newServiceRef);
-    set(newService, {
-      name,
-      description,
-      price: Number(price),
-      category,
-      imageUrl,
-      ownerId: auth.currentUser.uid,
-    })
-      .then(() => {
-        const serviceId = newService.key;
-        const userRef = ref(
-          database,
-          `users/${auth.currentUser.uid}/businessDetails`
-        );
-        onValue(
-          userRef,
-          (snapshot) => {
-            const userDetails = snapshot.val();
-            let servicesOffered = userDetails.servicesOffered || [];
-            if (!servicesOffered.includes(serviceId)) {
-              servicesOffered.push(serviceId);
-              set(
-                ref(
-                  database,
-                  `users/${auth.currentUser.uid}/businessDetails/servicesOffered`
-                ),
-                servicesOffered
-              );
-            }
-          },
-          { onlyOnce: true }
-        );
-        navigate("/profile");
-      })
-      .catch((error) => {
-        console.error("Failed to create service: ", error);
-      });
   };
 
   return (
@@ -154,14 +176,13 @@ const CreateServicePage = () => {
                 accept="image/*"
                 onChange={handleImageUpload}
               />
-              {imageUrl && (
+              {imageUrl ? (
                 <img
                   src={imageUrl}
                   alt="Uploaded"
                   style={{ maxWidth: "100%", maxHeight: "100%" }}
                 />
-              )}
-              {!imageUrl && (
+              ) : (
                 <Typography
                   variant="body1"
                   sx={{
@@ -184,6 +205,8 @@ const CreateServicePage = () => {
           <TextField
             label="Description"
             required
+            multiline
+            rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -208,8 +231,8 @@ const CreateServicePage = () => {
               ))}
             </Select>
           </FormControl>
-          <Button type="submit" variant="contained">
-            Create Service
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Service"}
           </Button>
         </Box>
       </Paper>

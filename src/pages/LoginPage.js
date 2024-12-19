@@ -7,6 +7,7 @@ import {
   Button,
   Box,
   Link,
+  Alert,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -23,12 +24,6 @@ const firebaseConfig = {
   measurementId: "G-HHRKZL7JJR",
 };
 
-const paperStyle = {
-  padding: "20px",
-  marginTop: "20px",
-  backgroundColor: "#101010",
-};
-
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
@@ -37,26 +32,32 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (event) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
 
     try {
-      // Sign in using Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      // If successful, update local storage and navigate to the homepage
+      await signInWithEmailAndPassword(auth, email, password);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userEmail", email);
-      navigate("/home"); // Navigate to the home page or dashboard as needed
-    } catch (error) {
-      console.error("Error logging in:", error);
-      setError("Invalid email or password");
+      navigate("/home");
+    } catch (err) {
+      let errorMessage = "An error occurred. Please try again.";
+      if (err.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email.";
+      } else if (err.code === "auth/wrong-password") {
+        errorMessage = "Incorrect password.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address.";
+      }
+      setError(errorMessage);
+      console.error("Error logging in:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -73,10 +74,15 @@ const LoginPage = () => {
           backgroundColor: "#101010",
         }}
       >
-        <Typography component="h1" variant="h5">
+        <Typography component="h1" variant="h5" color="textPrimary">
           Sign in
         </Typography>
-        <Box component="form" onSubmit={handleLogin} noValidate sx={{ mt: 1 }}>
+        <Box
+          component="form"
+          onSubmit={handleLogin}
+          noValidate
+          sx={{ mt: 1, width: "100%" }}
+        >
           <TextField
             variant="outlined"
             margin="normal"
@@ -89,6 +95,7 @@ const LoginPage = () => {
             autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-label="Email Address"
           />
           <TextField
             variant="outlined"
@@ -102,21 +109,24 @@ const LoginPage = () => {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-label="Password"
           />
           {error && (
-            <Typography variant="body2" color="error">
+            <Alert severity="error" sx={{ mt: 2 }}>
               {error}
-            </Typography>
+            </Alert>
           )}
           <Button
             type="submit"
             fullWidth
             variant="contained"
+            color="primary"
+            disabled={isSubmitting}
             sx={{ mt: 3, mb: 2 }}
           >
-            Sign In
+            {isSubmitting ? "Signing In..." : "Sign In"}
           </Button>
-          <Link href="/sign-up" variant="body2">
+          <Link href="/sign-up" variant="body2" sx={{ display: "block", mt: 2 }}>
             Don't have an account? Sign Up
           </Link>
         </Box>
